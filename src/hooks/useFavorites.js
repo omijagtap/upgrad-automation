@@ -34,17 +34,15 @@ export function useFavorites() {
   }, [profile]);
 
   const toggleFavorite = useCallback(async (automationId) => {
-    // Determine next favorites array
-    let next;
-    setFavorites((prev) => {
-      next = prev.includes(automationId)
-        ? prev.filter((id) => id !== automationId)
-        : [...prev, automationId];
-        
-      // Keep localStorage in sync as cache/fallback
-      localStorage.setItem('upgrad-favorites', JSON.stringify(next));
-      return next;
-    });
+    // Determine next favorites array using current favorites list
+    const isFav = favorites.includes(automationId);
+    const next = isFav
+      ? favorites.filter((id) => id !== automationId)
+      : [...favorites, automationId];
+
+    // Optimistically update the state and localStorage cache
+    setFavorites(next);
+    localStorage.setItem('upgrad-favorites', JSON.stringify(next));
 
     // Asynchronously save to Supabase if user is logged in
     if (user?.id) {
@@ -58,7 +56,7 @@ export function useFavorites() {
         console.warn('Failed to sync favorites with Supabase:', err.message);
       }
     }
-  }, [user, refreshProfile]);
+  }, [favorites, user, refreshProfile]);
 
   const isFavorite = useCallback((automationId) => {
     return favorites.includes(automationId);

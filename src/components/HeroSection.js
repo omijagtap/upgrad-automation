@@ -23,7 +23,7 @@ export default function HeroSection({ totalLive }) {
           }}
         >
           <span className="live-dot" />
-          <span className="text-[11px] font-medium" style={{ color: 'var(--foreground)' }}>
+          <span className="text-[11px] font-normal" style={{ color: 'var(--foreground)' }}>
             {totalLive} automation tools live
           </span>
         </motion.div>

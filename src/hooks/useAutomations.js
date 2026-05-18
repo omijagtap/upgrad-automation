@@ -14,7 +14,7 @@ export function useAutomations() {
       setLoading(false);
       return;
     }
-    
+
     try {
       const { data, error } = await getDbAutomations();
       if (!error && data) {
@@ -46,7 +46,7 @@ export function useAutomations() {
   // Add new automation
   const addAutomation = useCallback(async (newCard) => {
     if (!isSupabaseConfigured()) return { data: null, error: 'Supabase not configured' };
-    
+
     const { data, error } = await createDbAutomation({
       name: newCard.name,
       description: newCard.description,
@@ -54,7 +54,10 @@ export function useAutomations() {
       link: newCard.link,
       icon: newCard.icon || 'Zap',
       enabled: newCard.enabled !== undefined ? newCard.enabled : true,
-      status: newCard.status || 'live'
+      status: newCard.status || 'live',
+      time_saved_per_day: newCard.time_saved_per_day !== undefined ? Number(newCard.time_saved_per_day) : 0,
+      frequency_per_week: newCard.frequency_per_week !== undefined ? Number(newCard.frequency_per_week) : 1,
+      time_saved_per_run: newCard.time_saved_per_run !== undefined ? Number(newCard.time_saved_per_run) : 0
     });
 
     if (!error && data) {
@@ -67,7 +70,7 @@ export function useAutomations() {
   const updateAutomation = useCallback(async (id, updates) => {
     // If it's a static card (doesn't exist in dbAutomations), we update it in local state
     const isDbCard = dbAutomations.some(item => item.id === id);
-    
+
     if (isDbCard && isSupabaseConfigured()) {
       const { data, error } = await updateDbAutomation(id, updates);
       if (!error && data) {
@@ -84,7 +87,7 @@ export function useAutomations() {
   // Delete dynamic automation
   const deleteAutomation = useCallback(async (id) => {
     const isDbCard = dbAutomations.some(item => item.id === id);
-    
+
     if (isDbCard && isSupabaseConfigured()) {
       const { error } = await deleteDbAutomation(id);
       if (!error) {

@@ -7,25 +7,17 @@ import Navbar from '@/components/Navbar';
 import AutomationCard from '@/components/AutomationCard';
 import EmptyState from '@/components/EmptyState';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useRecents } from '@/hooks/useRecents';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivity } from '@/lib/supabase';
 import { useAutomations } from '@/hooks/useAutomations';
 
 export default function RecentPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recent, setRecent] = useState([]);
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { recent, addRecent } = useRecents();
   const { user } = useAuth();
   const { automations, loading: autosLoading } = useAutomations();
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('upgrad-recent') || '[]');
-      setRecent(saved);
-    } catch {
-      setRecent([]);
-    }
-  }, []);
 
   const recentAutomations = useMemo(() => {
     const recentIds = recent.map((r) => r.id.toString());
@@ -49,14 +41,16 @@ export default function RecentPage() {
     if (user?.email) {
       logActivity(user.email, automation.name, automation.program).catch(() => {});
     }
+    // Save to recents when opened from Recent page too
+    addRecent(automation.id).catch(() => {});
     window.open(automation.link, '_blank', 'noopener,noreferrer');
-  }, [user]);
+  }, [user, addRecent]);
 
   return (
     <div className="flex flex-col h-full">
       <Navbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-7xl mr-auto px-4 md:px-6 py-6 md:py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

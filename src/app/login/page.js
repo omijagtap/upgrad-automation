@@ -136,7 +136,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 required={isSupabaseConfigured()}
-                className="w-full px-3.5 py-2.5 text-sm rounded-xl transition-all duration-200"
+                className="w-full px-3.5 py-2.5 text-[16px] md:text-sm rounded-xl transition-all duration-200"
                 style={{
                   background: 'var(--input-bg)',
                   border: '1px solid var(--border-color)',
@@ -157,7 +157,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required={isSupabaseConfigured()}
-                  className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-xl transition-all duration-200"
+                  className="w-full px-3.5 py-2.5 pr-10 text-[16px] md:text-sm rounded-xl transition-all duration-200"
                   style={{
                     background: 'var(--input-bg)',
                     border: '1px solid var(--border-color)',

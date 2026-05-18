@@ -43,78 +43,105 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.35, delay: index * 0.05, ease: 'easeOut' }}
-      className={`group relative rounded-xl card-shine transition-all duration-300 ${isDisabled ? 'opacity-60' : ''}`}
+      className={`group relative rounded-xl card-shine transition-all duration-300 h-full flex flex-col justify-between ${isDisabled ? 'opacity-60' : ''}`}
       style={{
         background: 'var(--card-bg)',
         border: '1px solid var(--border-color)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        width: '100%',
       }}
       whileHover={!isDisabled ? {
-        scale: 1.015,
+        scale: 1.02,
         boxShadow: '0 8px 40px var(--shadow-color), 0 0 30px var(--glow-color)',
         borderColor: 'var(--border-hover)',
       } : {}}
     >
-      <div className="p-4">
-        {/* Top Row: Icon + Status + Favorite */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300"
+      <div className="p-4 flex-1 flex flex-col justify-between">
+        {/* Top Content Area */}
+        <div>
+          {/* Top Row: Icon + Status + Favorite */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-color)',
+                  color: isDisabled ? 'var(--muted-fg)' : 'var(--accent)',
+                }}
+              >
+                <IconComponent size={15} />
+              </div>
+
+              {/* Status and Timer Container */}
+              <div className="flex flex-col gap-0.5 items-start">
+                {/* Timer text placed directly above status badge in small clean font without borders */}
+                {(automation.time_saved_per_run > 0 || automation.time_saved_per_day > 0) && (
+                  <span
+                    className="text-[9px] font-normal flex items-center gap-1 select-none mb-0.5"
+                    style={{
+                      color: 'var(--muted-fg)',
+                    }}
+                  >
+                    <Clock size={10} className="text-[#10b981]" />
+                    <span>
+                      {automation.time_saved_per_run > 0
+                        ? `${automation.time_saved_per_run}m saved`
+                        : `${automation.time_saved_per_day}m/day`}
+                    </span>
+                  </span>
+                )}
+
+                <span
+                  className={`px-2.5 py-0.5 text-[10px] font-normal uppercase tracking-wider rounded-lg ${statusInfo.className}`}
+                >
+                  {statusInfo.label}
+                </span>
+              </div>
+            </div>
+
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(automation.id);
+              }}
+              whileHover={{ scale: 1.15 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-1.5 rounded-lg cursor-pointer transition-all duration-200"
               style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border-color)',
-                color: isDisabled ? 'var(--muted-fg)' : 'var(--accent)',
+                color: isFavorite ? '#f59e0b' : 'var(--muted-fg)',
               }}
             >
-              <IconComponent size={15} />
-            </div>
-            <span
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-lg ${statusInfo.className}`}
-            >
-              {statusInfo.label}
-            </span>
+              <Star
+                size={16}
+                fill={isFavorite ? '#f59e0b' : 'none'}
+              />
+            </motion.button>
           </div>
 
-          <motion.button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(automation.id);
-            }}
-            whileHover={{ scale: 1.15 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-1.5 rounded-lg cursor-pointer transition-all duration-200"
-            style={{
-              color: isFavorite ? '#f59e0b' : 'var(--muted-fg)',
-            }}
+          {/* Title - Bold */}
+          <h3
+            className="text-[13px] font-semibold mb-1 line-clamp-1"
+            style={{ color: 'var(--foreground)' }}
           >
-            <Star
-              size={16}
-              fill={isFavorite ? '#f59e0b' : 'none'}
-            />
-          </motion.button>
+            {name}
+          </h3>
+
+          {/* Description - Normal weight */}
+          <p
+            className="text-[11px] leading-relaxed mb-4 line-clamp-2 font-normal"
+            style={{ color: 'var(--muted-fg)' }}
+          >
+            {isDisabled ? statusInfo.message || description : description}
+          </p>
         </div>
 
-        {/* Title */}
-        <h3
-          className="text-[13px] font-semibold mb-1 line-clamp-1"
-          style={{ color: 'var(--foreground)' }}
-        >
-          {name}
-        </h3>
-
-        {/* Description */}
-        <p
-          className="text-[11px] leading-relaxed mb-3 line-clamp-2"
-          style={{ color: 'var(--muted-fg)' }}
-        >
-          {isDisabled ? statusInfo.message || description : description}
-        </p>
-
-        {/* Bottom Row: Program + Date + Action */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Bottom Row: Program + Date + Action (Always perfectly aligned at base) */}
+        <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.02)' }}>
+          <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="px-2.5 py-1 text-[10px] font-medium rounded-lg"
+              className="px-2.5 py-1 text-[10px] font-normal rounded-lg"
               style={{
                 background: 'var(--surface)',
                 color: 'var(--muted-fg)',
@@ -124,8 +151,7 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
               {program}
             </span>
             {updatedAt && (
-              <span className="flex items-center gap-1 text-[9px]" style={{ color: 'var(--muted-fg)' }}>
-                <Clock size={9} />
+              <span className="flex items-center gap-1 text-[9px] font-normal" style={{ color: 'var(--muted-fg)' }}>
                 {updatedAt}
               </span>
             )}
@@ -134,9 +160,8 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
           <motion.button
             onClick={() => !isDisabled && onOpen(automation)}
             disabled={isDisabled}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all duration-200 btn-press ${
-              isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
-            }`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-normal rounded-lg transition-all duration-200 btn-press ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+              }`}
             style={{
               background: isDisabled ? 'var(--surface)' : 'var(--accent)',
               color: isDisabled ? 'var(--muted-fg)' : '#ffffff',

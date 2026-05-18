@@ -15,7 +15,7 @@ export default function ProgramFilter({ activeProgram, onProgramChange, counts =
       {programList.map((program) => {
         const isActive = activeProgram === program;
         const count = counts[program] || 0;
-        
+
         // Format display name (e.g., "All Programs" -> "All")
         const displayName = program === 'All Programs' ? 'All' : program;
 

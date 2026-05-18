@@ -74,7 +74,10 @@ export default function AuthorityPage() {
     link: '',
     icon: 'GraduationCap',
     status: 'live',
-    enabled: true
+    enabled: true,
+    time_saved_per_day: 0,
+    frequency_per_week: 1,
+    time_saved_per_run: 0
   });
   const [addAutoLoading, setAddAutoLoading] = useState(false);
   const [addAutoError, setAddAutoError] = useState('');
@@ -88,7 +91,10 @@ export default function AuthorityPage() {
     program: '',
     link: '',
     status: 'live',
-    enabled: true
+    enabled: true,
+    time_saved_per_day: 0,
+    frequency_per_week: 1,
+    time_saved_per_run: 0
   });
   const [editAutoLoading, setEditAutoLoading] = useState(false);
   const [editAutoError, setEditAutoError] = useState('');
@@ -125,7 +131,11 @@ export default function AuthorityPage() {
     setAddAutoError('');
 
     try {
-      const { error } = await addAutomation(addAutoForm);
+      const payload = {
+        ...addAutoForm,
+        time_saved_per_day: Math.round((Number(addAutoForm.time_saved_per_run || 0) * Number(addAutoForm.frequency_per_week || 1)) / 5)
+      };
+      const { error } = await addAutomation(payload);
       if (error) {
         setAddAutoError(error);
       } else {
@@ -137,7 +147,10 @@ export default function AuthorityPage() {
           link: '',
           icon: 'GraduationCap',
           status: 'live',
-          enabled: true
+          enabled: true,
+          time_saved_per_day: 0,
+          frequency_per_week: 1,
+          time_saved_per_run: 0
         });
       }
     } catch (err) {
@@ -155,7 +168,10 @@ export default function AuthorityPage() {
       program: auto.program || '',
       link: auto.link || '',
       status: auto.status || 'live',
-      enabled: auto.enabled !== undefined ? auto.enabled : true
+      enabled: auto.enabled !== undefined ? auto.enabled : true,
+      time_saved_per_day: auto.time_saved_per_day !== undefined ? auto.time_saved_per_day : 0,
+      frequency_per_week: auto.frequency_per_week !== undefined ? auto.frequency_per_week : 1,
+      time_saved_per_run: auto.time_saved_per_run !== undefined ? auto.time_saved_per_run : 0
     });
     setEditAutoError('');
     setShowAddAuto(false); // Close add form if open
@@ -174,7 +190,11 @@ export default function AuthorityPage() {
     setEditAutoError('');
 
     try {
-      const { error } = await updateAutomation(editingAuto.id, editAutoForm);
+      const payload = {
+        ...editAutoForm,
+        time_saved_per_day: Math.round((Number(editAutoForm.time_saved_per_run || 0) * Number(editAutoForm.frequency_per_week || 1)) / 5)
+      };
+      const { error } = await updateAutomation(editingAuto.id, payload);
       if (error) {
         setEditAutoError(error);
       } else {
@@ -277,7 +297,7 @@ export default function AuthorityPage() {
     <div className="flex flex-col h-full">
       <Navbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-7xl mr-auto px-4 md:px-6 py-6 md:py-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -484,6 +504,59 @@ export default function AuthorityPage() {
                               <option value="development">In Development</option>
                             </select>
                           </div>
+
+                          {/* Frequency Per Week */}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[11px] font-medium" style={{ color: 'var(--muted-fg)' }}>
+                              How many times is this automation used per week?
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="7"
+                              placeholder="e.g. 3"
+                              value={editingAuto ? editAutoForm.frequency_per_week : addAutoForm.frequency_per_week}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Math.min(7, Number(e.target.value));
+                                editingAuto
+                                  ? setEditAutoForm({ ...editAutoForm, frequency_per_week: val })
+                                  : setAddAutoForm({ ...addAutoForm, frequency_per_week: val });
+                              }}
+                              required
+                              className="px-3 py-2 text-xs rounded-xl"
+                              style={{
+                                background: 'var(--input-bg)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--foreground)',
+                              }}
+                            />
+                          </div>
+
+                          {/* Time Saved Per Run */}
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[11px] font-medium" style={{ color: 'var(--muted-fg)' }}>
+                              How much time does this automation save per run? (in minutes)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="e.g. 30"
+                              value={editingAuto ? editAutoForm.time_saved_per_run : addAutoForm.time_saved_per_run}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
+                                editingAuto
+                                  ? setEditAutoForm({ ...editAutoForm, time_saved_per_run: val })
+                                  : setAddAutoForm({ ...addAutoForm, time_saved_per_run: val });
+                              }}
+                              required
+                              className="px-3 py-2 text-xs rounded-xl"
+                              style={{
+                                background: 'var(--input-bg)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--foreground)',
+                              }}
+                            />
+                          </div>
                         </div>
 
                         {/* Description */}
@@ -581,6 +654,9 @@ export default function AuthorityPage() {
                             Program
                           </th>
                           <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>
+                            Savings Profile
+                          </th>
+                          <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>
                             Status
                           </th>
                           <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>
@@ -617,6 +693,16 @@ export default function AuthorityPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-3">
+                                <div className="flex flex-col gap-0.5 text-xs">
+                                  <span className="font-semibold text-emerald-500">
+                                    {auto.time_saved_per_run || 0} mins saved/run
+                                  </span>
+                                  <span className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>
+                                    Used {auto.frequency_per_week || 1}x per week
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
                                 <select
                                   value={auto.status || 'live'}
                                   onChange={(e) => changeAutomationStatus(auto.id, e.target.value)}
@@ -649,7 +735,7 @@ export default function AuthorityPage() {
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
                                   <span
-                                    className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-lg ${auto.status === 'live'
+                                    className={`inline-block text-center w-[92px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-lg ${auto.status === 'live'
                                         ? 'status-live'
                                         : auto.status === 'maintenance'
                                           ? 'status-maintenance'

@@ -18,19 +18,19 @@ export default function Navbar({ searchQuery, onSearchChange }) {
         borderBottom: '1px solid var(--border-color)',
       }}
     >
-      <div className="flex items-center justify-between h-11 px-4 md:px-6">
-        {/* Breadcrumb Info (Left) */}
-        <div className="flex items-center gap-1.5 text-[12px] font-medium tracking-tight select-none">
-          <span style={{ color: 'var(--muted-fg)' }}>Dashboard</span>
-          <span style={{ color: 'var(--border-color)', opacity: 0.6 }}>/</span>
+      <div className="flex items-center justify-between h-[52px] pl-[52px] pr-4 md:px-6">
+        {/* Breadcrumb Info (Left) - Hidden Dashboard parent on mobile for clean fit */}
+        <div className="flex items-center gap-1.5 text-[12.8px] font-medium tracking-tight select-none">
+          <span className="hidden sm:inline" style={{ color: 'var(--muted-fg)' }}>Dashboard</span>
+          <span className="hidden sm:inline" style={{ color: 'var(--border-color)', opacity: 0.6 }}>/</span>
           <span style={{ color: 'var(--foreground)' }}>Automations</span>
         </div>
 
         {/* Right Section (Search bar + Toggle) */}
-        <div className="flex items-center gap-3">
-          {/* Search Input Box */}
+        <div className="flex items-center gap-2 xs:gap-3">
+          {/* Search Input Box - Responsive width to fit narrow mobile displays */}
           <div
-            className="relative flex items-center transition-all duration-300 rounded-lg w-[260px] md:w-[320px]"
+            className="relative flex items-center transition-all duration-300 rounded-lg w-[120px] xs:w-[160px] sm:w-[220px] md:w-[320px]"
             style={{
               background: 'var(--input-bg)',
               border: focused ? '1px solid var(--accent)' : '1px solid var(--border-color)',
@@ -38,7 +38,7 @@ export default function Navbar({ searchQuery, onSearchChange }) {
             }}
           >
             <Search
-              size={13}
+              size={14}
               className="absolute left-2.5 pointer-events-none"
               style={{ color: 'var(--muted-fg)' }}
             />
@@ -49,7 +49,7 @@ export default function Navbar({ searchQuery, onSearchChange }) {
               onChange={(e) => onSearchChange(e.target.value)}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              className="w-full py-1 pl-8 pr-12 text-[12px] bg-transparent border-0 rounded-lg focus:ring-0"
+              className="w-full py-1.5 pl-8 pr-12 text-[12.6px] bg-transparent border-0 rounded-lg focus:ring-0"
               style={{
                 color: 'var(--foreground)',
                 outline: 'none',
@@ -73,7 +73,7 @@ export default function Navbar({ searchQuery, onSearchChange }) {
                     className="pointer-events-auto p-0.5 rounded-md hover:bg-white/10"
                     style={{ color: 'var(--muted-fg)' }}
                   >
-                    <X size={12} />
+                    <X size={13} />
                   </motion.button>
                 ) : (
                   <motion.span
@@ -81,7 +81,7 @@ export default function Navbar({ searchQuery, onSearchChange }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-[9px] px-1.5 py-0.5 rounded border font-mono tracking-widest leading-none select-none opacity-55"
+                    className="text-[9.5px] px-1.5 py-0.5 rounded border font-mono tracking-widest leading-none select-none opacity-55"
                     style={{
                       borderColor: 'var(--border-color)',
                       background: 'var(--surface)',
