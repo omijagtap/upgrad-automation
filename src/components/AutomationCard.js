@@ -74,17 +74,22 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
                 <IconComponent size={15} />
               </div>
 
-              {/* Status and Timer Container */}
-              <div className="flex flex-col gap-0.5 items-start">
-                {/* Timer text placed directly above status badge in small clean font without borders */}
+              {/* Status and Timer Container - Side-by-side with 20% smaller font size */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span
+                  className={`px-2 py-0.5 text-[8px] font-normal uppercase tracking-wider rounded-lg ${statusInfo.className}`}
+                >
+                  {statusInfo.label}
+                </span>
+
                 {(automation.time_saved_per_run > 0 || automation.time_saved_per_day > 0) && (
                   <span
-                    className="text-[9px] font-normal flex items-center gap-1 select-none mb-0.5"
+                    className="text-[7.2px] font-normal flex items-center gap-0.5 select-none"
                     style={{
                       color: 'var(--muted-fg)',
                     }}
                   >
-                    <Clock size={10} className="text-[#10b981]" />
+                    <Clock size={8} className="text-[#10b981]" />
                     <span>
                       {automation.time_saved_per_run > 0
                         ? `${automation.time_saved_per_run}m saved`
@@ -92,12 +97,6 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
                     </span>
                   </span>
                 )}
-
-                <span
-                  className={`px-2.5 py-0.5 text-[10px] font-normal uppercase tracking-wider rounded-lg ${statusInfo.className}`}
-                >
-                  {statusInfo.label}
-                </span>
               </div>
             </div>
 
