@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
       <Navbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mr-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-8xl mr-auto px-4 md:px-6 py-6 md:py-8">
           
           {/* Header */}
           <motion.div

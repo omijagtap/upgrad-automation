@@ -202,10 +202,18 @@ body::before {
    ============================================================ */
 .card-shine {
   position: relative;
-  overflow: hidden;
 }
 
-.card-shine::after {
+.card-shine-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-shine-overlay::after {
   content: '';
   position: absolute;
   top: -50%;
@@ -223,11 +231,11 @@ body::before {
   pointer-events: none;
 }
 
-.card-shine:hover::after {
+.card-shine:hover .card-shine-overlay::after {
   transform: rotate(45deg) translateX(100%);
 }
 
-.light .card-shine::after {
+.light .card-shine-overlay::after {
   background: linear-gradient(to right,
       transparent 0%,
       rgba(0, 0, 0, 0.01) 45%,

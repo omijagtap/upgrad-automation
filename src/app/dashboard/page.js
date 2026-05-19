@@ -79,7 +79,7 @@ export default function DashboardHome() {
       <Navbar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mr-auto px-4 md:px-6 py-4 md:py-6">
+        <div className="max-w-8xl mr-auto px-4 md:px-6 py-4 md:py-6">
           {/* Hero Section */}
           <HeroSection totalLive={totalLive} />
 

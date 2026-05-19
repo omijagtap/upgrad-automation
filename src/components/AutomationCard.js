@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Star, ExternalLink, Clock, AlertTriangle, Wrench, Code, GraduationCap } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -30,6 +31,7 @@ const statusConfig = {
 };
 
 export default function AutomationCard({ automation, isFavorite, onToggleFavorite, onOpen, index = 0 }) {
+  const [showDescTooltip, setShowDescTooltip] = useState(false);
   const { name, description, program, icon, enabled, status, updatedAt } = automation;
   const isDisabled = !enabled || status !== 'live';
   const statusInfo = statusConfig[status] || statusConfig.live;
@@ -51,12 +53,14 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
         WebkitBackdropFilter: 'blur(12px)',
         width: '100%',
       }}
-      whileHover={!isDisabled ? {
-        scale: 1.02,
-        boxShadow: '0 8px 40px var(--shadow-color), 0 0 30px var(--glow-color)',
-        borderColor: 'var(--border-hover)',
-      } : {}}
+      whileHover={{
+        scale: isDisabled ? 1 : 1.02,
+        boxShadow: isDisabled ? 'none' : '0 8px 40px var(--shadow-color), 0 0 30px var(--glow-color)',
+        borderColor: isDisabled ? 'var(--border-color)' : 'var(--border-hover)',
+        zIndex: 50,
+      }}
     >
+      <div className="card-shine-overlay" />
       <div className="p-4 flex-1 flex flex-col justify-between">
         {/* Top Content Area */}
         <div>
@@ -119,21 +123,44 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
             </motion.button>
           </div>
 
-          {/* Title - Bold */}
+          {/* Title - Bold, wraps naturally to show full name */}
           <h3
-            className="text-[13px] font-semibold mb-1 line-clamp-1"
+            className="text-[13px] font-semibold mb-1.5 break-words leading-snug"
             style={{ color: 'var(--foreground)' }}
           >
             {name}
           </h3>
 
-          {/* Description - Normal weight */}
-          <p
-            className="text-[11px] leading-relaxed mb-4 line-clamp-2 font-normal"
-            style={{ color: 'var(--muted-fg)' }}
+          {/* Description - Normal weight with Tooltip */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setShowDescTooltip(true)}
+            onMouseLeave={() => setShowDescTooltip(false)}
           >
-            {isDisabled ? statusInfo.message || description : description}
-          </p>
+            <p
+              className="text-[11px] leading-relaxed mb-4 line-clamp-2 font-normal cursor-help"
+              style={{ color: 'var(--muted-fg)' }}
+              title={isDisabled ? statusInfo.message || description : description}
+            >
+              {isDisabled ? statusInfo.message || description : description}
+            </p>
+            {/* Custom Tooltip */}
+            <div 
+              className={`absolute z-50 left-0 top-full mt-1 p-2 text-[10px] rounded-lg transition-all duration-200 w-max max-w-[90vw] sm:max-w-[420px] shadow-xl border backdrop-blur-md ${
+                showDescTooltip ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+              }`}
+              style={{
+                background: 'var(--surface)',
+                borderColor: 'var(--border-hover)',
+                color: 'var(--foreground)',
+                boxShadow: '0 4px 20px var(--shadow-color)',
+              }}
+            >
+              <div className="font-medium leading-normal break-words">
+                {isDisabled ? statusInfo.message || description : description}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Bottom Row: Program + Date + Action (Always perfectly aligned at base) */}
