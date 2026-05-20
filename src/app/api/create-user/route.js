@@ -43,10 +43,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to retrieve the created user.' }, { status: 500 });
     }
 
-    // 2. Insert the user's profile record in the "profiles" table
+    // 2. Upsert the user's profile record in the "profiles" table
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
+      .upsert({
         id: user.id,
         name: name,
         email: email,

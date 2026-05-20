@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   Edit,
   Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +44,7 @@ export default function AuthorityPage() {
   const [addUserForm, setAddUserForm] = useState({ email: '', password: '', name: '', role: 'user' });
   const [addUserLoading, setAddUserLoading] = useState(false);
   const [addUserError, setAddUserError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   // Dynamic Automation Hook and States
@@ -260,6 +263,7 @@ export default function AuthorityPage() {
       } else {
         setShowAddUser(false);
         setAddUserForm({ email: '', password: '', name: '', role: 'user' });
+        setShowPassword(false);
         fetchData();
       }
     } catch (err) {
@@ -888,19 +892,28 @@ export default function AuthorityPage() {
                             color: 'var(--foreground)',
                           }}
                         />
-                        <input
-                          type="password"
-                          placeholder="Password"
-                          value={addUserForm.password}
-                          onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
-                          required
-                          className="px-3 py-2 text-xs rounded-xl"
-                          style={{
-                            background: 'var(--input-bg)',
-                            border: '1px solid var(--border-color)',
-                            color: 'var(--foreground)',
-                          }}
-                        />
+                        <div className="relative flex items-center">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Password"
+                            value={addUserForm.password}
+                            onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
+                            required
+                            className="w-full px-3 py-2 pr-10 text-xs rounded-xl"
+                            style={{
+                              background: 'var(--input-bg)',
+                              border: '1px solid var(--border-color)',
+                              color: 'var(--foreground)',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 p-1 rounded-lg text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                          >
+                            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
                         <select
                           value={addUserForm.role}
                           onChange={(e) => setAddUserForm({ ...addUserForm, role: e.target.value })}
@@ -937,7 +950,10 @@ export default function AuthorityPage() {
                         </motion.button>
                         <motion.button
                           type="button"
-                          onClick={() => setShowAddUser(false)}
+                          onClick={() => {
+                            setShowAddUser(false);
+                            setShowPassword(false);
+                          }}
                           className="px-4 py-2 text-xs font-medium rounded-xl cursor-pointer"
                           style={{
                             background: 'var(--surface)',
