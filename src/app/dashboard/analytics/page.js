@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
               <AlertCircle size={32} className="text-zinc-500 mb-3" />
               <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--foreground)' }}>No Automations Tracked Yet</h2>
               <p className="text-xs max-w-sm" style={{ color: 'var(--muted-fg)' }}>
-                Create custom automation cards with "Time Saved" data in the Authority Panel to populate operational savings charts.
+                Create custom automation cards with &quot;Time Saved&quot; data in the Authority Panel to populate operational savings charts.
               </p>
             </motion.div>
           ) : (

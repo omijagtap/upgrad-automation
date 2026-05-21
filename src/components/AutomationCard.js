@@ -145,21 +145,21 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
               {isDisabled ? statusInfo.message || description : description}
             </p>
             {/* Custom Tooltip */}
-            <div 
-              className={`absolute z-50 left-0 top-full mt-1 p-2 text-[10px] rounded-lg transition-all duration-200 w-max max-w-[90vw] sm:max-w-[420px] shadow-xl border backdrop-blur-md ${
-                showDescTooltip ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-              }`}
-              style={{
-                background: 'var(--surface)',
-                borderColor: 'var(--border-hover)',
-                color: 'var(--foreground)',
-                boxShadow: '0 4px 20px var(--shadow-color)',
-              }}
-            >
-              <div className="font-medium leading-normal break-words">
-                {isDisabled ? statusInfo.message || description : description}
+            {showDescTooltip && (
+              <div 
+                className="absolute z-50 left-0 top-full mt-1 p-2 text-[10px] rounded-lg shadow-xl border backdrop-blur-md w-max max-w-[280px]"
+                style={{
+                  background: 'var(--surface)',
+                  borderColor: 'var(--border-hover)',
+                  color: 'var(--foreground)',
+                  boxShadow: '0 4px 20px var(--shadow-color)',
+                }}
+              >
+                <div className="font-medium leading-normal break-words">
+                  {isDisabled ? statusInfo.message || description : description}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
