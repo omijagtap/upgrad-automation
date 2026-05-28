@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
 
-  const fetchProfile = useCallback(async (userId) => {
+  const fetchProfile = useCallback(async (userId, authUser) => {
     try {
       const { data } = await getUserProfile(userId);
       if (data && data.active === false) {
@@ -30,7 +30,12 @@ export function AuthProvider({ children }) {
         setUser(null);
         setSession(null);
       } else {
-        setProfile(data);
+        const dbAvatar = authUser?.user_metadata?.avatar_url;
+        const localAvatar = typeof window !== 'undefined' ? localStorage.getItem(`upgrad_avatar_${data.email}`) : null;
+        setProfile({
+          ...data,
+          avatar_url: dbAvatar || localAvatar || data.avatar_url
+        });
       }
     } catch {
       setProfile(null);
@@ -40,8 +45,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // If Supabase is not configured, use demo mode
     if (!isSupabaseConfigured()) {
+      const localAvatar = typeof window !== 'undefined' ? localStorage.getItem('upgrad_avatar_admin@upgrad.com') : null;
       setUser({ id: 'demo-user', email: 'admin@upgrad.com' });
-      setProfile(DEMO_PROFILE);
+      setProfile({
+        ...DEMO_PROFILE,
+        avatar_url: localAvatar
+      });
       setSession({ user: { id: 'demo-user', email: 'admin@upgrad.com' } });
       setLoading(false);
       return;
@@ -52,7 +61,7 @@ export function AuthProvider({ children }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        fetchProfile(s.user.id);
+        fetchProfile(s.user.id, s.user);
       }
       setLoading(false);
     });
@@ -63,7 +72,7 @@ export function AuthProvider({ children }) {
         setSession(s);
         setUser(s?.user ?? null);
         if (s?.user) {
-          fetchProfile(s.user.id);
+          fetchProfile(s.user.id, s.user);
         } else {
           setProfile(null);
         }
@@ -73,6 +82,23 @@ export function AuthProvider({ children }) {
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    if (isSupabaseConfigured()) {
+      const { data: { user: latestUser } } = await supabase.auth.getUser();
+      if (latestUser) {
+        setUser(latestUser);
+        await fetchProfile(latestUser.id, latestUser);
+      }
+    } else {
+      const localAvatar = typeof window !== 'undefined' ? localStorage.getItem(`upgrad_avatar_${user.email}`) : null;
+      setProfile(prev => ({
+        ...prev,
+        avatar_url: localAvatar
+      }));
+    }
+  }, [user, fetchProfile]);
 
   const value = {
     user,
@@ -84,7 +110,7 @@ export function AuthProvider({ children }) {
     isCoAdmin: profile?.role === 'co_admin',
     isUser: profile?.role === 'user',
     hasAdminAccess: profile?.role === 'admin' || profile?.role === 'co_admin',
-    refreshProfile: () => user && isSupabaseConfigured() && fetchProfile(user.id),
+    refreshProfile,
   };
 
   return (

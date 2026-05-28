@@ -10,7 +10,7 @@ export default function ThemeToggle() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="relative flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300 cursor-pointer"
+      className="relative flex items-center justify-center w-[32px] h-[32px] rounded-xl transition-all duration-300 cursor-pointer"
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border-color)',
@@ -26,9 +26,9 @@ export default function ThemeToggle() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         {theme === 'dark' ? (
-          <Moon size={16} style={{ color: 'var(--muted-fg)' }} />
+          <Moon size={14} style={{ color: 'var(--muted-fg)' }} />
         ) : (
-          <Sun size={16} style={{ color: 'var(--muted-fg)' }} />
+          <Sun size={14} style={{ color: 'var(--muted-fg)' }} />
         )}
       </motion.div>
     </motion.button>

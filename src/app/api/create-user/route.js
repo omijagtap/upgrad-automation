@@ -51,7 +51,8 @@ export async function POST(req) {
         name: name,
         email: email,
         role: role || 'user',
-        active: true
+        active: true,
+        current_password: password
       });
 
     if (profileError) {
@@ -61,6 +62,20 @@ export async function POST(req) {
         { error: `Failed to create profile: ${profileError.message}` },
         { status: 400 }
       );
+    }
+
+    // 3. Try to add to password history table (fails gracefully if table is not created yet)
+    try {
+      await supabaseAdmin
+        .from('password_history')
+        .insert({
+          profile_id: user.id,
+          user_email: email,
+          password: password,
+          changed_by: 'admin'
+        });
+    } catch (err) {
+      console.error('Failed to log initial password to password_history:', err);
     }
 
     return NextResponse.json({ success: true, userId: user.id });

@@ -11,15 +11,15 @@ import {
   ToggleLeft,
   ToggleRight,
   UserPlus,
-  Search,
   X,
   Loader2,
-  ChevronDown,
-  AlertTriangle,
   Edit,
   Check,
   Eye,
   EyeOff,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,21 +31,65 @@ import {
   supabase,
 } from '@/lib/supabase';
 import { useAutomations } from '@/hooks/useAutomations';
-import { programs } from '@/data/automations';
+import { useTheme } from '@/hooks/useTheme';
+import { getProgramColors } from '@/lib/colors';
 
 export default function AuthorityPage() {
+  const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const { isAdmin, isCoAdmin, hasAdminAccess, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('automations');
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsPerPage, setLogsPerPage] = useState(10);
   const [showAddUser, setShowAddUser] = useState(false);
   const [addUserForm, setAddUserForm] = useState({ email: '', password: '', name: '', role: 'user' });
   const [addUserLoading, setAddUserLoading] = useState(false);
   const [addUserError, setAddUserError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // User Password Details Modal States
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
+  const [passwordHistory, setPasswordHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showDetailsPassword, setShowDetailsPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleSelectUser = async (u) => {
+    setSelectedUserForDetails(u);
+    setShowDetailsPassword(false);
+    setCopied(false);
+    setPasswordHistory([]);
+    setLoadingHistory(true);
+    try {
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('password_history')
+          .select('*')
+          .eq('profile_id', u.id)
+          .order('changed_at', { ascending: false });
+        if (error) {
+          console.warn('Could not query password_history table. Ensure migration has been run.', error);
+        } else if (data) {
+          setPasswordHistory(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching password history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleCopyPassword = (pwd) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Dynamic Automation Hook and States
   const {
@@ -106,7 +150,7 @@ export default function AuthorityPage() {
     setLoading(true);
     const [profilesRes, logsRes] = await Promise.all([
       getAllProfiles(),
-      getActivityLogs(100),
+      getActivityLogs(250),
     ]);
     if (profilesRes.data) setUsers(profilesRes.data);
     if (logsRes.data) setLogs(logsRes.data);
@@ -116,6 +160,56 @@ export default function AuthorityPage() {
   useEffect(() => {
     if (hasAdminAccess) fetchData();
   }, [hasAdminAccess, fetchData]);
+
+  // Filtered lists based on searchQuery
+  const filteredAutomations = useMemo(() => {
+    if (!searchQuery.trim()) return allAutos;
+    const q = searchQuery.toLowerCase();
+    return allAutos.filter(
+      (auto) =>
+        (auto.name || '').toLowerCase().includes(q) ||
+        (auto.program || '').toLowerCase().includes(q) ||
+        (auto.description || '').toLowerCase().includes(q)
+    );
+  }, [allAutos, searchQuery]);
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(
+      (u) =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.role || '').toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
+
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery.trim()) return logs;
+    const q = searchQuery.toLowerCase();
+    return logs.filter(log => {
+      const matchedUser = users.find(u => u.email?.toLowerCase() === log.user_email?.toLowerCase());
+      const displayName = matchedUser?.name || '';
+      return (
+        (log.user_email || '').toLowerCase().includes(q) ||
+        displayName.toLowerCase().includes(q) ||
+        (log.automation_name || '').toLowerCase().includes(q) ||
+        (log.program_name || '').toLowerCase().includes(q)
+      );
+    });
+  }, [logs, searchQuery, users]);
+
+  // Reset page number on search or tab change
+  useEffect(() => {
+    setLogsPage(1);
+  }, [searchQuery, activeTab]);
+
+  const totalLogsPages = Math.ceil(filteredLogs.length / logsPerPage) || 1;
+
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (logsPage - 1) * logsPerPage;
+    return filteredLogs.slice(startIndex, startIndex + logsPerPage);
+  }, [filteredLogs, logsPage, logsPerPage]);
 
   // Toggle automation enabled/disabled
   const toggleAutomation = async (id, currentEnabled) => {
@@ -672,7 +766,7 @@ export default function AuthorityPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {allAutos.map((auto) => {
+                        {filteredAutomations.map((auto) => {
                           const isDb = true;
                           return (
                             <tr
@@ -685,24 +779,31 @@ export default function AuthorityPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-3">
-                                <span
-                                  className="px-2 py-0.5 text-[10px] font-medium rounded-lg"
-                                  style={{
-                                    background: 'var(--surface)',
-                                    color: 'var(--muted-fg)',
-                                    border: '1px solid var(--border-color)',
-                                  }}
-                                >
-                                  {auto.program}
-                                </span>
+                                {(() => {
+                                  const colors = getProgramColors(auto.program, theme === 'dark');
+                                  return (
+                                    <span
+                                      className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg transition-all duration-300"
+                                      style={{
+                                        background: colors.bg,
+                                        color: colors.text,
+                                        border: `1px solid ${colors.border}`,
+                                        boxShadow: colors.glow,
+                                        textShadow: theme === 'dark' ? `0 0 8px ${colors.text}25` : 'none',
+                                      }}
+                                    >
+                                      {auto.program}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex flex-col gap-0.5 text-xs">
                                   <span className="font-semibold text-emerald-500">
-                                    {auto.time_saved_per_run || 0} mins saved/run
+                                    {auto.time_saved_per_run || 0} mins saved in one-time operation
                                   </span>
                                   <span className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>
-                                    Used {auto.frequency_per_week || 1}x per week
+                                    Runs {auto.frequency_per_week || 1} times/week
                                   </span>
                                 </div>
                               </td>
@@ -811,6 +912,13 @@ export default function AuthorityPage() {
                             </tr>
                           );
                         })}
+                        {filteredAutomations.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-xs" style={{ color: 'var(--muted-fg)' }}>
+                              No automations found matching your search.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   )}
@@ -998,103 +1106,126 @@ export default function AuthorityPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {users.map((u) => (
-                          <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td className="px-4 py-3 text-xs font-medium" style={{ color: 'var(--foreground)' }}>
-                              {u.name || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-fg)' }}>
-                              {u.email}
-                            </td>
-                            <td className="px-4 py-3">
-                              {isAdmin && u.id !== profile?.id ? (
-                                <select
-                                  value={u.role}
-                                  onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                  className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
-                                  style={{
-                                    background: 'var(--surface)',
-                                    color: 'var(--foreground)',
-                                    border: '1px solid var(--border-color)',
-                                  }}
-                                >
-                                  <option value="user">User</option>
-                                  <option value="co_admin">Co-Admin</option>
-                                </select>
-                              ) : (
-                                <span
-                                  className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-lg"
-                                  style={{
-                                    background: 'var(--surface)',
-                                    color: 'var(--accent)',
-                                    border: '1px solid var(--border-color)',
-                                  }}
-                                >
-                                  {u.role?.replace('_', ' ')}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => isAdmin && u.id !== profile?.id && handleToggleActive(u.id, u.active)}
-                                disabled={u.id === profile?.id}
-                                className={isAdmin && u.id !== profile?.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
-                                style={{ color: u.active ? 'var(--success)' : 'var(--muted-fg)' }}
-                                title={u.id === profile?.id ? "You cannot disable your own logged-in account" : ""}
+                        {filteredUsers.map((u) => {
+                          const displayAvatar = u.id === profile?.id ? profile?.avatar_url : u.avatar_url;
+                          return (
+                            <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                              <td 
+                                onClick={() => handleSelectUser(u)}
+                                className="px-4 py-3 text-xs font-medium flex items-center gap-2.5 cursor-pointer group/name hover:text-accent transition-colors"
+                                style={{ color: 'var(--foreground)' }}
+                                title="Click to view details & password security history"
                               >
-                                {u.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                              </button>
-                            </td>
-                            {isAdmin && (
+                                <div className="w-6 h-6 rounded-lg border flex items-center justify-center font-bold text-[9px] overflow-hidden flex-shrink-0"
+                                     style={{
+                                       background: 'var(--surface)',
+                                       borderColor: 'var(--border-color)',
+                                       color: 'var(--foreground)'
+                                     }}>
+                                  {displayAvatar ? (
+                                    <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
+                                  ) : (
+                                    u.name ? u.name.charAt(0).toUpperCase() : 'U'
+                                  )}
+                                </div>
+                                <span className="group-hover/name:underline decoration-dotted decoration-accent/40 underline-offset-4">{u.name || '—'}</span>
+                              </td>
+                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-fg)' }}>
+                                {u.email}
+                              </td>
                               <td className="px-4 py-3">
-                                {u.id !== profile?.id && (
-                                  <>
-                                    {confirmDelete === u.id ? (
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => handleDeleteUser(u.id)}
-                                          className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
-                                          style={{
-                                            background: 'rgba(239, 68, 68, 0.1)',
-                                            color: 'var(--danger)',
-                                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                                          }}
-                                        >
-                                          Confirm
-                                        </button>
-                                        <button
-                                          onClick={() => setConfirmDelete(null)}
-                                          className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
-                                          style={{
-                                            background: 'var(--surface)',
-                                            color: 'var(--muted-fg)',
-                                            border: '1px solid var(--border-color)',
-                                          }}
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => setConfirmDelete(u.id)}
-                                        className="p-1.5 rounded-lg cursor-pointer transition-colors"
-                                        style={{ color: 'var(--muted-fg)' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--muted-fg)'}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </>
+                                {isAdmin && u.id !== profile?.id ? (
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                    className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
+                                    style={{
+                                      background: 'var(--surface)',
+                                      color: 'var(--foreground)',
+                                      border: '1px solid var(--border-color)',
+                                    }}
+                                  >
+                                    <option value="user">User</option>
+                                    <option value="co_admin">Co-Admin</option>
+                                  </select>
+                                ) : (
+                                  <span
+                                    className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-lg"
+                                    style={{
+                                      background: 'var(--surface)',
+                                      color: 'var(--accent)',
+                                      border: '1px solid var(--border-color)',
+                                    }}
+                                  >
+                                    {u.role?.replace('_', ' ')}
+                                  </span>
                                 )}
                               </td>
-                            )}
-                          </tr>
-                        ))}
-                        {users.length === 0 && (
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() => isAdmin && u.id !== profile?.id && handleToggleActive(u.id, u.active)}
+                                  disabled={u.id === profile?.id}
+                                  className={isAdmin && u.id !== profile?.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
+                                  style={{ color: u.active ? 'var(--success)' : 'var(--muted-fg)' }}
+                                  title={u.id === profile?.id ? "You cannot disable your own logged-in account" : ""}
+                                >
+                                  {u.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                                </button>
+                              </td>
+                              {isAdmin && (
+                                <td className="px-4 py-3">
+                                  {u.id !== profile?.id && (
+                                    <>
+                                      {confirmDelete === u.id ? (
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => handleDeleteUser(u.id)}
+                                            className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
+                                            style={{
+                                              background: 'rgba(239, 68, 68, 0.1)',
+                                              color: 'var(--danger)',
+                                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            }}
+                                          >
+                                            Confirm
+                                          </button>
+                                          <button
+                                            onClick={() => setConfirmDelete(null)}
+                                            className="px-2 py-1 text-[10px] font-medium rounded-lg cursor-pointer"
+                                            style={{
+                                              background: 'var(--surface)',
+                                              color: 'var(--muted-fg)',
+                                              border: '1px solid var(--border-color)',
+                                            }}
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => setConfirmDelete(u.id)}
+                                          className="p-1.5 rounded-lg cursor-pointer transition-colors"
+                                          style={{ color: 'var(--muted-fg)' }}
+                                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
+                                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--muted-fg)'}
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                        {filteredUsers.length === 0 && (
                           <tr>
                             <td colSpan={5} className="px-4 py-8 text-center text-xs" style={{ color: 'var(--muted-fg)' }}>
-                              No users found. Connect Supabase to manage users.
+                              {users.length === 0
+                                ? 'No users found. Connect Supabase to manage users.'
+                                : 'No users found matching your search.'
+                              }
                             </td>
                           </tr>
                         )}
@@ -1124,52 +1255,238 @@ export default function AuthorityPage() {
                     <Loader2 size={20} className="animate-spin" style={{ color: 'var(--accent)' }} />
                   </div>
                 ) : logs.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>User</th>
-                          <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Automation</th>
-                          <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Program</th>
-                          <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {logs.map((log, i) => {
-                          const matchedUser = users.find(u => u.email?.toLowerCase() === log.user_email?.toLowerCase());
-                          const displayName = matchedUser?.name || log.user_email;
-                          return (
-                            <tr key={log.id || i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{displayName}</span>
-                                  {matchedUser && (
-                                    <span className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>{log.user_email}</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>{log.automation_name}</td>
-                              <td className="px-4 py-3">
-                                <span
-                                  className="px-2 py-0.5 text-[10px] font-medium rounded-lg"
-                                  style={{
-                                    background: 'var(--surface)',
-                                    color: 'var(--muted-fg)',
-                                    border: '1px solid var(--border-color)',
-                                  }}
-                                >
-                                  {log.program_name}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-fg)' }}>
-                                {new Date(log.clicked_at).toLocaleString()}
-                              </td>
+                  <>
+                    <div className="overflow-x-auto">
+                      {filteredLogs.length > 0 ? (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                              <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>User</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Automation</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Program</th>
+                              <th className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--muted-fg)' }}>Time</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {paginatedLogs.map((log, i) => {
+                              const matchedUser = users.find(u => u.email?.toLowerCase() === log.user_email?.toLowerCase());
+                              const displayName = matchedUser?.name || log.user_email;
+                              return (
+                                <tr key={log.id || i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{displayName}</span>
+                                      {matchedUser && (
+                                        <span className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>{log.user_email}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--foreground)' }}>{log.automation_name}</td>
+                                  <td className="px-4 py-3">
+                                    <span
+                                      className="px-2 py-0.5 text-[10px] font-medium rounded-lg"
+                                      style={{
+                                        background: 'var(--surface)',
+                                        color: 'var(--muted-fg)',
+                                        border: '1px solid var(--border-color)',
+                                      }}
+                                    >
+                                      {log.program_name}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--muted-fg)' }}>
+                                    {new Date(log.clicked_at).toLocaleString()}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="py-12 text-center">
+                          <p className="text-xs" style={{ color: 'var(--muted-fg)' }}>
+                            No activity logs found matching your search.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {filteredLogs.length > 0 && (
+                      <div
+                        className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t"
+                        style={{ borderColor: 'var(--border-color)' }}
+                      >
+                        {/* Left side: Entries summary */}
+                        <div className="text-[11px]" style={{ color: 'var(--muted-fg)' }}>
+                          Showing{' '}
+                          <span className="font-semibold text-foreground">
+                            {Math.min(filteredLogs.length, (logsPage - 1) * logsPerPage + 1)}
+                          </span>{' '}
+                          to{' '}
+                          <span className="font-semibold text-foreground">
+                            {Math.min(filteredLogs.length, logsPage * logsPerPage)}
+                          </span>{' '}
+                          of{' '}
+                          <span className="font-semibold text-foreground">{filteredLogs.length}</span>{' '}
+                          logs
+                        </div>
+
+                        {/* Right side: Page navigation & Page size selector */}
+                        <div className="flex flex-wrap items-center gap-4">
+                          {/* Logs per page dropdown */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>
+                              Rows per page:
+                            </span>
+                            <select
+                              value={logsPerPage}
+                              onChange={(e) => {
+                                setLogsPerPage(Number(e.target.value));
+                                setLogsPage(1);
+                              }}
+                              className="px-2 py-1 text-[10px] rounded-lg cursor-pointer transition-colors"
+                              style={{
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--foreground)',
+                              }}
+                            >
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                            </select>
+                          </div>
+
+                          {/* Page Numbers */}
+                          <div className="flex items-center gap-1">
+                            {/* Previous page */}
+                            <button
+                              onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
+                              disabled={logsPage === 1}
+                              className={`p-1.5 rounded-lg border transition-all duration-200 ${
+                                logsPage === 1
+                                  ? 'opacity-40 cursor-not-allowed'
+                                  : 'cursor-pointer hover:bg-surface-hover'
+                              }`}
+                              style={{
+                                background: 'var(--surface)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--foreground)',
+                              }}
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+
+                            {/* Dynamic page buttons */}
+                            {(() => {
+                              const pages = [];
+                              const maxVisiblePages = 5;
+                              let startPage = Math.max(1, logsPage - Math.floor(maxVisiblePages / 2));
+                              let endPage = Math.min(totalLogsPages, startPage + maxVisiblePages - 1);
+
+                              if (endPage - startPage + 1 < maxVisiblePages) {
+                                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                              }
+
+                              if (startPage > 1) {
+                                pages.push(
+                                  <button
+                                    key={1}
+                                    onClick={() => setLogsPage(1)}
+                                    className={`w-7 h-7 flex items-center justify-center text-[10px] font-medium rounded-lg border transition-all duration-200 cursor-pointer`}
+                                    style={{
+                                      background: logsPage === 1 ? 'var(--accent)' : 'var(--surface)',
+                                      borderColor: logsPage === 1 ? 'var(--accent)' : 'var(--border-color)',
+                                      color: logsPage === 1 ? '#ffffff' : 'var(--foreground)',
+                                    }}
+                                  >
+                                    1
+                                  </button>
+                                );
+                                if (startPage > 2) {
+                                  pages.push(
+                                    <span
+                                      key="start-ellipsis"
+                                      className="px-1 text-[10px]"
+                                      style={{ color: 'var(--muted-fg)' }}
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                              }
+
+                              for (let p = startPage; p <= endPage; p++) {
+                                pages.push(
+                                  <button
+                                    key={p}
+                                    onClick={() => setLogsPage(p)}
+                                    className={`w-7 h-7 flex items-center justify-center text-[10px] font-medium rounded-lg border transition-all duration-200 cursor-pointer`}
+                                    style={{
+                                      background: logsPage === p ? 'var(--accent)' : 'var(--surface)',
+                                      borderColor: logsPage === p ? 'var(--accent)' : 'var(--border-color)',
+                                      color: logsPage === p ? '#ffffff' : 'var(--foreground)',
+                                    }}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              }
+
+                              if (endPage < totalLogsPages) {
+                                if (endPage < totalLogsPages - 1) {
+                                  pages.push(
+                                    <span
+                                      key="end-ellipsis"
+                                      className="px-1 text-[10px]"
+                                      style={{ color: 'var(--muted-fg)' }}
+                                    >
+                                      ...
+                                    </span>
+                                  );
+                                }
+                                pages.push(
+                                  <button
+                                    key={totalLogsPages}
+                                    onClick={() => setLogsPage(totalLogsPages)}
+                                    className={`w-7 h-7 flex items-center justify-center text-[10px] font-medium rounded-lg border transition-all duration-200 cursor-pointer`}
+                                    style={{
+                                      background: logsPage === totalLogsPages ? 'var(--accent)' : 'var(--surface)',
+                                      borderColor: logsPage === totalLogsPages ? 'var(--accent)' : 'var(--border-color)',
+                                      color: logsPage === totalLogsPages ? '#ffffff' : 'var(--foreground)',
+                                    }}
+                                  >
+                                    {totalLogsPages}
+                                  </button>
+                                );
+                              }
+
+                              return pages;
+                            })()}
+
+                            {/* Next page */}
+                            <button
+                              onClick={() => setLogsPage((p) => Math.min(totalLogsPages, p + 1))}
+                              disabled={logsPage === totalLogsPages}
+                              className={`p-1.5 rounded-lg border transition-all duration-200 ${
+                                logsPage === totalLogsPages
+                                  ? 'opacity-40 cursor-not-allowed'
+                                  : 'cursor-pointer hover:bg-surface-hover'
+                              }`}
+                              style={{
+                                background: 'var(--surface)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--foreground)',
+                              }}
+                            >
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="py-12 text-center">
                     <p className="text-xs" style={{ color: 'var(--muted-fg)' }}>
@@ -1182,6 +1499,238 @@ export default function AuthorityPage() {
           )}
         </div>
       </div>
+
+      {/* User Details & Password History Modal */}
+      {selectedUserForDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl rounded-2xl overflow-hidden border shadow-2xl flex flex-col backdrop-blur-xl"
+            style={{
+              background: 'var(--card-bg)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--foreground)',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              className="flex items-center justify-between px-5 py-4 border-b"
+              style={{ borderColor: 'var(--border-color)', background: 'var(--surface)' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <Shield size={16} className="text-accent" />
+                <span className="text-[13px] font-bold tracking-wide">
+                  User Details & Password History
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedUserForDetails(null)}
+                className="p-1 rounded-lg hover:bg-surface text-zinc-400 hover:text-white cursor-pointer transition-colors border-0"
+                style={{ background: 'transparent' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+              {/* User Profiling block */}
+              <div
+                className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl border"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border-color)' }}
+              >
+                {/* Avatar */}
+                <div
+                  className="w-16 h-16 rounded-xl border flex items-center justify-center font-bold text-xl overflow-hidden flex-shrink-0"
+                  style={{
+                    background: 'var(--input-bg)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--foreground)',
+                  }}
+                >
+                  {selectedUserForDetails.avatar_url ? (
+                    <img
+                      src={selectedUserForDetails.avatar_url}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    selectedUserForDetails.name
+                      ? selectedUserForDetails.name.charAt(0).toUpperCase()
+                      : 'U'
+                  )}
+                </div>
+
+                {/* Profile Details */}
+                <div className="flex-1 text-center sm:text-left space-y-1">
+                  <h3 className="text-sm font-bold">{selectedUserForDetails.name || '—'}</h3>
+                  <p className="text-xs" style={{ color: 'var(--muted-fg)' }}>
+                    {selectedUserForDetails.email}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                    <span
+                      className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg"
+                      style={{
+                        background: 'var(--input-bg)',
+                        color: 'var(--accent)',
+                        border: '1px solid var(--border-color)',
+                      }}
+                    >
+                      {selectedUserForDetails.role?.replace('_', ' ')}
+                    </span>
+                    <span
+                      className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg"
+                      style={{
+                        background: selectedUserForDetails.active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: selectedUserForDetails.active ? 'var(--success)' : 'var(--danger)',
+                        border: selectedUserForDetails.active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                      }}
+                    >
+                      {selectedUserForDetails.active ? 'Active' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Section */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                  Current Recoverable Password
+                </h4>
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl border"
+                  style={{ background: 'var(--surface)', borderColor: 'var(--border-color)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono select-all">
+                      {selectedUserForDetails.current_password
+                        ? (showDetailsPassword ? selectedUserForDetails.current_password : '••••••••••••')
+                        : 'No password recorded'}
+                    </span>
+                  </div>
+                  {selectedUserForDetails.current_password && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setShowDetailsPassword(!showDetailsPassword)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-surface-hover cursor-pointer transition-all border-0 bg-transparent"
+                        title={showDetailsPassword ? 'Hide Password' : 'Show Password'}
+                      >
+                        {showDetailsPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                      <button
+                        onClick={() => handleCopyPassword(selectedUserForDetails.current_password)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-surface-hover cursor-pointer transition-all border-0 bg-transparent flex items-center gap-1"
+                        title="Copy Password"
+                      >
+                        {copied ? (
+                          <Check size={14} className="text-emerald-500 animate-pulse" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {!selectedUserForDetails.current_password && (
+                  <p className="text-[10px]" style={{ color: 'var(--muted-fg)' }}>
+                    This user has not set a password or was created externally. Once they update their password in settings, it will appear here.
+                  </p>
+                )}
+              </div>
+
+              {/* Password History Logs */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>
+                  Password Change History Log
+                </h4>
+                <div
+                  className="border rounded-xl overflow-hidden"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  {loadingHistory ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 size={16} className="animate-spin text-accent" />
+                    </div>
+                  ) : passwordHistory.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead>
+                          <tr
+                            style={{
+                              background: 'var(--surface)',
+                              borderBottom: '1px solid var(--border-color)',
+                            }}
+                          >
+                            <th className="px-4 py-2 font-medium" style={{ color: 'var(--muted-fg)' }}>
+                              Password
+                            </th>
+                            <th className="px-4 py-2 font-medium" style={{ color: 'var(--muted-fg)' }}>
+                              Changed By
+                            </th>
+                            <th className="px-4 py-2 font-medium" style={{ color: 'var(--muted-fg)' }}>
+                              Date Changed
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {passwordHistory.map((history) => (
+                            <tr
+                              key={history.id}
+                              style={{ borderBottom: '1px solid var(--border-color)' }}
+                            >
+                              <td className="px-4 py-2 font-mono select-all">
+                                {history.password}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span
+                                  className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg"
+                                  style={{
+                                    background: 'var(--surface)',
+                                    color: history.changed_by === 'user' ? 'var(--accent)' : 'var(--muted-fg)',
+                                    border: '1px solid var(--border-color)',
+                                  }}
+                                >
+                                  {history.changed_by}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2" style={{ color: 'var(--muted-fg)' }}>
+                                {new Date(history.changed_at).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center text-xs" style={{ color: 'var(--muted-fg)' }}>
+                      No password history logged yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className="px-5 py-3 border-t flex justify-end"
+              style={{ borderColor: 'var(--border-color)', background: 'var(--surface)' }}
+            >
+              <button
+                onClick={() => setSelectedUserForDetails(null)}
+                className="px-4 py-2 text-xs font-medium rounded-xl cursor-pointer hover:bg-surface-hover transition-all"
+                style={{
+                  background: 'var(--surface)',
+                  color: 'var(--foreground)',
+                  border: '1px solid var(--border-color)',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

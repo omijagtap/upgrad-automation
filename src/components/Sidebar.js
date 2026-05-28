@@ -14,12 +14,10 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   Menu,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { signOut } from '@/lib/supabase';
 
 const menuItems = [
   { name: 'Home', icon: Home, path: '/dashboard' },
@@ -36,17 +34,13 @@ const adminItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { hasAdminAccess, profile } = useAuth();
+  const { hasAdminAccess } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Force expansion on mobile devices so links and Logout are fully visible and clickable
   const showExpanded = !collapsed || mobileOpen;
 
-  const handleLogout = async () => {
-    await signOut();
-    window.location.href = '/login';
-  };
 
   const NavLink = ({ item }) => {
     const isActive = pathname === item.path;
@@ -144,38 +138,7 @@ export default function Sidebar() {
       </div>
 
       {/* Bottom Section */}
-      <div className="px-2.5 py-2.5 border-t space-y-1.5" style={{ borderColor: 'var(--border-color)' }}>
-        {/* User info */}
-        {showExpanded && profile && (
-          <div className="px-2.5 py-1.5">
-            <p className="text-[0.6875rem] font-medium truncate" style={{ color: 'var(--foreground)' }}>
-              {profile.name || 'User'}
-            </p>
-            <p className="text-[0.625rem] truncate" style={{ color: 'var(--muted-fg)' }}>
-              {profile.role?.replace('_', '-') || 'user'}
-            </p>
-          </div>
-        )}
-
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-200"
-          style={{ color: 'var(--muted-fg)' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--surface-hover)';
-            e.currentTarget.style.color = 'var(--danger)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--muted-fg)';
-          }}
-        >
-          <LogOut className="w-[0.9375rem] h-[0.9375rem] flex-shrink-0" />
-          {showExpanded && <span className="text-[0.8125rem] font-medium">Logout</span>}
-        </button>
-
-
+      <div className="px-2.5 py-2.5 border-t" style={{ borderColor: 'var(--border-color)' }}>
         {/* Collapse Toggle - Desktop Only */}
         <button
           onClick={() => setCollapsed(!collapsed)}

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Star, ExternalLink, Clock, AlertTriangle, Wrench, Code, GraduationCap } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
+import { getProgramColors } from '@/lib/colors';
 
 const statusConfig = {
   live: {
@@ -31,6 +33,7 @@ const statusConfig = {
 };
 
 export default function AutomationCard({ automation, isFavorite, onToggleFavorite, onOpen, index = 0 }) {
+  const { theme } = useTheme();
   const [showDescTooltip, setShowDescTooltip] = useState(false);
   const { name, description, program, icon, enabled, status, updatedAt } = automation;
   const isDisabled = !enabled || status !== 'live';
@@ -166,16 +169,23 @@ export default function AutomationCard({ automation, isFavorite, onToggleFavorit
         {/* Bottom Row: Program + Date + Action (Always perfectly aligned at base) */}
         <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.02)' }}>
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="px-2.5 py-1 text-[10px] font-normal rounded-lg"
-              style={{
-                background: 'var(--surface)',
-                color: 'var(--muted-fg)',
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              {program}
-            </span>
+            {(() => {
+              const colors = getProgramColors(program, theme === 'dark');
+              return (
+                <span
+                  className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg transition-all duration-300"
+                  style={{
+                    background: colors.bg,
+                    color: colors.text,
+                    border: `1px solid ${colors.border}`,
+                    boxShadow: colors.glow,
+                    textShadow: theme === 'dark' ? `0 0 8px ${colors.text}25` : 'none',
+                  }}
+                >
+                  {program}
+                </span>
+              );
+            })()}
             {updatedAt && (
               <span className="flex items-center gap-1 text-[9px] font-normal" style={{ color: 'var(--muted-fg)' }}>
                 {updatedAt}

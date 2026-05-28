@@ -207,6 +207,7 @@ export const programs = [
   "Operations",
   "Analytics",
   "PGDM",
+  "Central",
   "Others"
 ];
 
